@@ -1,0 +1,42 @@
+# Cube.obj
+# A simple cube model for testing the OBJ renderer
+
+# Vertices (8 corners of a cube)
+v -1.0 -1.0 -1.0
+v 1.0 -1.0 -1.0
+v 1.0 1.0 -1.0
+v -1.0 1.0 -1.0
+v -1.0 -1.0 1.0
+v 1.0 -1.0 1.0
+v 1.0 1.0 1.0
+v -1.0 1.0 1.0
+
+# Vertex normals
+vn 0.0 0.0 -1.0  # Front face normal
+vn 1.0 0.0 0.0   # Right face normal
+vn 0.0 0.0 1.0   # Back face normal
+vn -1.0 0.0 0.0  # Left face normal
+vn 0.0 1.0 0.0   # Top face normal
+vn 0.0 -1.0 0.0  # Bottom face normal
+
+# Faces (each face is a quad made up of 4 vertices)
+# Format: f v1//vn1 v2//vn2 v3//vn3 v4//vn4
+# Where v# is vertex index and vn# is normal index
+
+# Front face (z = -1.0)
+f 1//1 2//1 3//1 4//1
+
+# Right face (x = 1.0)
+f 2//2 6//2 7//2 3//2
+
+# Back face (z = 1.0)
+f 6//3 5//3 8//3 7//3
+
+# Left face (x = -1.0)
+f 5//4 1//4 4//4 8//4
+
+# Top face (y = 1.0)
+f 4//5 3//5 7//5 8//5
+
+# Bottom face (y = -1.0)
+f 5//6 6//6 2//6 1//6
