@@ -87,10 +87,51 @@ The goal of this project is to **learn 3D computer graphics through practical ap
 - Make sure you have `CMake` installed.
 - Use `MSYS` or `MinGW` for compilation on Window.
 
+---
+### **Custom Model**
+1. Place Your Model:
+- Add your custom 3D model (`.obj` file) to the `models/` folder.
+2. Include the Model in Your Code:
+- Open `main.cpp` and add the following line anywhere before the `main()` function:
+  
+  ```cpp
+  Model modelDetail("YourModelName.obj", color, offset);
+  ```
+- Replace the parameters with your desired values:
+  - `YourModelName.obj`: The name of your model file.
+  - `color`: The RGB color of the model, using `Color(r, g, b)` format.
+  - Example:
 
+    ```cpp
+    Color(255, 255, 255)  // White  
+    Color(255, 0, 0)      // Red
+    ```
+
+  - `offset`:  The distance from the camera. You’ll need to tweak this value to avoid performance issues.
+      - Guidelines for offset:
+         - If all vertices are within the range `[-1, 1]`, use an offset of around `50.0f`.
+
+         - If the range is larger, increase the offset (e.g., `1000.0f`, `2000.0f`, etc.) for proper rendering.
+
+---
 ### **Controls**
-   To be added soon
-   (for now only debug controls are added)
+   Current Controls:
+
+   `←` (Left Arrow): Switch to Wireframe rendering.
+
+   `→` (Right Arrow): Switch to Flat-shading rendering (beta).
+
+   `↑` (Up Arrow): Decrease the model offset (model moves closer to the camera).
+
+   `↓` (Down Arrow): Increase the model offset (model moves further from the camera).
+
+   `W`: Rotate the model around the Z-axis.
+
+   `S`: Rotate the model around the Y-axis.
+
+  ⚠️ More controls coming soon!
+
+---
 
 ### **Author**
 - *Name:* Anubhav Mondal
