@@ -1,0 +1,28 @@
+# C++ build artifacts
+/build/
+*.o
+*.obj
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.idb
+*.lib
+*.out
+*.log
+*.tmp
+*.ncb
+*.sdf
+*.suo
+*.sln
+*.vcxproj*
+*.ipch
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# VSCode settings
+.vscode/

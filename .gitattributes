@@ -1,0 +1,6 @@
+# Normalize line endings
+* text=auto
+*.cpp eol=lf
+*.h eol=lf
+*.json eol=lf
+*.txt eol=lf
