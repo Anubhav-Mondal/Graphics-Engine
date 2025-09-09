@@ -17,6 +17,7 @@
 *.sln
 *.vcxproj*
 *.ipch
+!models/*.obj
 
 # CMake files
 CMakeCache.txt

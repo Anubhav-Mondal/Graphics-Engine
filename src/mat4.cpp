@@ -41,19 +41,6 @@ Vec3d Mat4::operator*(const Vec3d& v) const {
 }
 
 
-// Set as Perspective Projection Matrix
-void Mat4::setPerspective(float fov, float aspect, float zNear, float zFar) {
-    float f = 1.0f / tan(fov / 2.0f);
-
-    m[0][0] = f / aspect;
-    m[1][1] = f;
-    m[2][2] = zFar / (zFar - zNear);
-    m[2][3] = 1.0f;
-    m[3][2] = (-zFar * zNear) / (zFar - zNear);
-    m[3][3] = 0.0f;
-}
-
-
 // Set Rotation around X axis
 void Mat4::setRotationX (float angle) {
     float c = cos(angle);
@@ -96,7 +83,6 @@ void Mat4::setRotationZ(float angle) {
 // Set as Projection Matrix
 void Mat4::setProjection(float near, float far, float fov, float aspect) {
     float f = 1.0f / tan(fov * 0.5f);   // Cotangent of half the FOV
-    float q = far / (far - near);
 
     // Zero out the matrix first
     for (int i = 0; i < 4; ++i)
@@ -105,9 +91,9 @@ void Mat4::setProjection(float near, float far, float fov, float aspect) {
 
     m[0][0] = f / aspect;
     m[1][1] = f;
-    m[2][2] = q;
+    m[2][2] = (far+near)/(near-far);
     m[2][3] = -1.0f;
-    m[3][2] = -q * near;
+    m[3][2] = (2*far*near)/(near-far);
 }
 
 void Mat4::setView(const Vec3d& eye, const Vec3d& target, const Vec3d& up) {

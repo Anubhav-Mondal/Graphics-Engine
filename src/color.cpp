@@ -46,6 +46,13 @@ void Color::gammaCorrect(float gammaValue) {
     b = static_cast<unsigned char>(std::clamp(255.0f * std::pow(b / 255.0f, invGamma), 0.0f, 255.0f));
 }
 
+// Post Processing (Saturation, Exposure, Gamma Correction)
+void Color::postProcess(float saturationValue, float exposureValue, float gammaValue) {
+    saturate(saturationValue);
+    exposure(exposureValue);
+    gammaCorrect(gammaValue);
+}
+
 // Clamp the Color
 void Color::clamp() {
     if (r > 255) r = 255;

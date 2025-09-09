@@ -15,6 +15,7 @@ struct Color
     void exposure(float exposure);
     void ambient(Color ambientColor, float ambientIntensity);
     void gammaCorrect(float gammaValue);
+    void postProcess(float saturation, float exposure, float gammaValue);
     void invert();
     void clamp();
     // Printing the color values

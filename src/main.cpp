@@ -15,36 +15,35 @@
 #include "color.h"
 #include "light.h"
 #include "model.h"
+#include "vsh.h"
 
 // Model Render Details 
-std::string modelToRender = "scorpion.obj";
-Color baseColor (255, 0, 0);
-Model modelDetail("scorpion.obj", Color(255, 255, 0), 50.0f);
-// Model modelDetail("sphere.obj", Color(255, 255, 255), 50.0f);
+   Model modelDetail("scorpion.obj", Color(255, 255, 0), 25.0f);
+// Model modelDetail("sphere.obj", Color(255, 255, 255), 10.0f);
 // Model modelDetail;
-// Model modelDetail("Skull.obj",WHITE, 1000.0f);
-// Model modelDetail("girl.obj",WHITE, 500.0f);
+// Model modelDetail("Skull.obj", WHITE, 500.0f);
+// Model modelDetail("dragger.obj",WHITE, 1000.0f);
 
 bool renderWireFrame = false;
 bool renderFlatShading = true;
+int renderMode = 0;  // 0: Wireframe, 1: Flat Shading, 2: Gouraud Shading
 
 // Light
-Vec3d lightDir(0.0f, 0.0f, 1.0f);
+Vec3d lightDir(0.0f, 0.5f, 1.0f);
 Color lightColor(255, 255, 0);
-Light light1(lightDir, lightColor, 0.07f);
+Light light1(lightDir, lightColor, 2.0f);
 
 std::vector<Light> lights= {
-    // Light(Vec3d(-0.5f, -0.5f, 1.0f), Color(255, 0, 100), 1.0f),
-    Light(Vec3d(0.5f, -0.5f, 1.0f), Color(100, 0, 255), 10.0f)
+    Light(Vec3d(0.5f, -0.5f, 1.0f), WHITE, 1.0f)
 };
 
-// Processing
+// Post Processing
 bool additiveLighting = false;
 Color ambientColor(20, 20, 150); // Ambient light color
 float ambientIntensity = 0.5f;   // Ambient light intensity
 float exposure = 4.0f;           // exposure value 
 float saturation = 0.9f;         // saturation value 
-float gammaValue = 3.2f;         // gamma value
+float gammaValue = 1.2f;         // gamma value
 
 // Camera 
 Vec3d camera(0.0f, 0.0f, 0.0f);
@@ -53,14 +52,14 @@ float yaw = 0.0f, pitch = 0.0f;
 Vec3d angle(0.0f, 0.0f, 0.0f);
 float offset = modelDetail.minOffset;   // Adjust the `offset` to position the model
 
-// Mouse details
+// Mouse details (no complete yet)
 bool firstMouse = true;
 float lastX = 400, lastY = 300;  // Initial mouse position
 float sensitivity = 0.01f;
 
 // Keyboard callback
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    const float speed = 0.1f;
+    const float speed = 0.0f;
 
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -68,26 +67,15 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     // Movement controls (WASD)
     if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         camera.z += speed;
-        // angle.x += 0.1f;
-        // angle.y += 0.1f;
-        angle.z += 0.1f;
     }
     if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         camera.z -= speed;
-        // angle.x -= 0.1f;
-        angle.y -= 0.1f;
-        // angle.z -= 0.1f;
     }
     if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        camera.x -= speed;
-        light1.lightDir.x += speed;
-        light1.lightDir.z += speed;
-        
+        camera.x -= speed;        
     }
     if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         camera.x += speed;;
-        light1.lightDir.x -= speed;
-        light1.lightDir.z -= speed;
     }
 
     // Rotate with arrow keys
@@ -104,44 +92,67 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
     if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         yaw -= 2.0f;
-        // additiveLighting = true;
-        renderFlatShading = true;
-        renderWireFrame = false;
+        renderMode -= 1;
+        if (renderMode < 0) { renderMode = 2; }
     }
     if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         yaw += 2.0f;
-        renderFlatShading = false;
-        renderWireFrame = true;
-        // additiveLighting = false;
+        renderMode += 1;
+        if (renderMode > 2) { renderMode = 0; }
     }
 
-    // std::cout << "Camera Position: " << camera.x << ", " << camera.y<< ", " << camera.z << std::endl;
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+        angle.x = 0.0f;
+        angle.y = 0.0f;
+        angle.z = 0.0f;
+    }
 }
 
 // Mouse movement callback
 void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
-    if (firstMouse) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        if (firstMouse) {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+        }
+
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos;  // Inverted Y
         lastX = xpos;
         lastY = ypos;
-        firstMouse = false;
+
+        // Adjust sensitivity for smoother rotation
+        float rotationSensitivity = 0.005f;
+        
+        // Horizontal mouse movement rotates around Y-axis
+        angle.y += xoffset * rotationSensitivity;
+        
+        // Vertical mouse movement rotates around X-axis
+        angle.x += yoffset * rotationSensitivity;
+        
+        float combinedMovement = (abs(xoffset) + abs(yoffset)) * 0.5f;
+        if (xoffset > 0 && yoffset > 0) {
+            angle.z += combinedMovement * rotationSensitivity * 0.3f; // Clockwise
+        } else if (xoffset < 0 && yoffset < 0) {
+            angle.z -= combinedMovement * rotationSensitivity * 0.3f; // Counter-clockwise
+        }
+    } else {
+        // Reset firstMouse when button is released
+        firstMouse = true;
     }
+}
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;  // Inverted Y (y goes up when you move the mouse down)
-    lastX = xpos;
-    lastY = ypos;
-
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    // Constrain the pitch
-    if (pitch > 89.0f) pitch = 89.0f;
-    if (pitch < -89.0f) pitch = -89.0f;
-
-    // std::cout << "Yaw: " << yaw << ", Pitch: " << pitch << std::endl;
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            // Start tracking mouse movement
+            firstMouse = true;
+        } else if (action == GLFW_RELEASE) {
+            // Stop tracking mouse movement
+            firstMouse = true;
+        }
+    }
 }
 
 // Mouse scroll callback (for zooming)
@@ -170,9 +181,6 @@ int main() {
     glfwSetCursorPosCallback(window, mouseCallback); // Mouse movement
     glfwSetScrollCallback(window, scrollCallback);   // Mouse scroll
 
-    // Lock the mouse inside the window
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
     std::fill(framebuffer.begin(), framebuffer.end(), 0);  // Clear the framebuffer
     
     auto lastTime = std::chrono::high_resolution_clock::now();
@@ -184,6 +192,7 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         std::fill(framebuffer.begin(), framebuffer.end(), 0);   // Clear Screen
+        std::fill(zBuffer.begin(), zBuffer.end(), std::numeric_limits<float>::infinity());
         // FPS Counter
         auto currentTime = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = currentTime - lastTime;
@@ -201,72 +210,37 @@ int main() {
         glfwPollEvents();
         
         // Matrices Initialization
-        Mat4 rotx, roty, rotz, proj;
+        Mat4 rotx, roty, rotz, proj, modelMat;
         // Setting the Matrices
         rotx.setRotationX(angle.x);
         roty.setRotationY(angle.y);
         rotz.setRotationZ(angle.z);
         proj.setProjection(FNEAR, FFAR, FFOVRAD, ASPECT_RATIO);
-
+        modelMat = rotx * roty * rotz;
 
         //In the rendering loop, consider these modifications:
         for (auto& tri : model.tris) {
-            Triangle triProjected, triTranslated, triRotatedZ, triRotatedY, triRotatedZX;
-            
-            // Apply rotations in a specific order (Z, then X, then Y if needed)
-            triRotatedZ.p[0] = rotz * tri.p[0];
-            triRotatedZ.p[1] = rotz * tri.p[1];
-            triRotatedZ.p[2] = rotz * tri.p[2];
+            // Transformatioin and Projection
+            Triangle triRotated = rotate(tri, modelMat);
+            Triangle triProjected = vertexShader(triRotated, offset, proj); 
 
-            triRotatedY.p[0] = roty * triRotatedZ.p[0];
-            triRotatedY.p[2] = roty * triRotatedZ.p[2];
-            triRotatedY.p[1] = roty * triRotatedZ.p[1];
-
-            triRotatedZX.p[0] = rotx * triRotatedY.p[0];
-            triRotatedZX.p[1] = rotx * triRotatedY.p[1];
-            triRotatedZX.p[2] = rotx * triRotatedY.p[2];
-
-            // Translate away from camera
-            triTranslated = triRotatedZX;
-            triTranslated.p[0].z += offset;  
-            triTranslated.p[1].z += offset;
-            triTranslated.p[2].z += offset;
-
-            // Projection
-            triProjected.p[0] = proj * triTranslated.p[0];
-            triProjected.p[1] = proj * triTranslated.p[1];
-            triProjected.p[2] = proj * triTranslated.p[2];
-
-            // Normalize and scale
-            triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
-            triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
-            triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
-            
-            triProjected.p[0].x *= 0.5f * (float)SCREEN_WIDTH;
-            triProjected.p[0].y *= 0.5f * (float)SCREEN_HEIGHT;
-            triProjected.p[1].x *= 0.5f * (float)SCREEN_WIDTH;
-            triProjected.p[1].y *= 0.5f * (float)SCREEN_HEIGHT;
-            triProjected.p[2].x *= 0.5f * (float)SCREEN_WIDTH;
-            triProjected.p[2].y *= 0.5f * (float)SCREEN_HEIGHT;
-
-            Vec3d edge1 = triRotatedZX.p[1] - triRotatedZX.p[0];    
-            Vec3d edge2 = triRotatedZX.p[2] - triRotatedZX.p[0];
-            Vec3d normal = edge1.cross(edge2);
+            Vec3d edge1 = triRotated.p[1] - triRotated.p[0];    
+            Vec3d edge2 = triRotated.p[2] - triRotated.p[0];
+            Vec3d normal = (edge1.cross(edge2)).normalize();
             
             // Culling
-            if (normal.dot(cameraDir) < 0) continue;
+            if (normal.dot(cameraDir) < 0) continue;  // Backface Culling
             if (triProjected.isOutside()) continue;   // Fraustram Culling
 
             // Wireframe Rendering
-            if (renderWireFrame) {
+            if (renderMode == 0) {
                 drawTriangle(triProjected.p[0].x, triProjected.p[0].y,
                             triProjected.p[1].x, triProjected.p[1].y,
                             triProjected.p[2].x, triProjected.p[2].y,
                             RED);
             }
             // Flat Shading Rendering
-            if (renderFlatShading){
-                
+            if (renderMode == 1){
                 // Initialize the Final Color
                 Color finalColor = modelDetail.baseColor;
                 // Ambient Lighting
@@ -278,8 +252,8 @@ int main() {
 
                 for (auto& light: lights) {
                     // Intensity Calculation
-                    light1.lightDir = light1.lightDir.normalize();
-                    float intensity = std::clamp(normal.dot(light1.lightDir) * light.lightIntensity, 0.0f, 1.0f);
+                    light.lightDir = light.lightDir.normalize();
+                    float intensity = std::clamp(normal.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
 
                     Color lightContribution;
                     lightContribution.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity), 0.0f, 255.0f));
@@ -302,17 +276,122 @@ int main() {
                 finalColor.g = static_cast<unsigned char>(accumulatedG);
                 finalColor.b = static_cast<unsigned char>(accumulatedB);
 
-                // Color Correction
-                finalColor.saturate(saturation); // Saturation
-                finalColor.exposure(exposure);   // Exposure
-                finalColor.gammaCorrect(gammaValue);  // Gamma Correction
+                // Post Processing
+                finalColor.postProcess(saturation, exposure, gammaValue);
     
                 // Shading (Flat shading)
-                drawTriangle(triProjected.p[0].x, triProjected.p[0].y,
-                            triProjected.p[1].x, triProjected.p[1].y,
-                            triProjected.p[2].x, triProjected.p[2].y,
-                            finalColor, true);
+                drawTriangleZ(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[0].z,
+                              triProjected.p[1].x, triProjected.p[1].y, triProjected.p[1].z,
+                              triProjected.p[2].x, triProjected.p[2].y, triProjected.p[2].z,
+                              finalColor, true);
             }            
+            // Gouraud Shading Rendering
+            if (renderMode == 2) {
+
+                Vec3d normal1, normal2, normal3;
+                if (tri.normalGiven) {
+                    normal1 = triRotated.n[0].normalize();
+                    normal2 = triRotated.n[1].normalize();
+                    normal3 = triRotated.n[2].normalize();
+                } else {
+                    normal1 = normal;
+                    normal2 = normal;
+                    normal3 = normal;
+                }
+                // Initialize the Final Color
+                Color finalColor1 = modelDetail.baseColor;
+                Color finalColor2 = modelDetail.baseColor;
+                Color finalColor3 = modelDetail.baseColor;
+                // Ambient Lighting
+                finalColor1.ambient(ambientColor, ambientIntensity);
+                finalColor2.ambient(ambientColor, ambientIntensity);
+                finalColor3.ambient(ambientColor, ambientIntensity);
+
+                float accumulatedR1 = finalColor1.r;
+                float accumulatedG1 = finalColor1.g;
+                float accumulatedB1 = finalColor1.b;
+
+                float accumulatedR2 = finalColor2.r;
+                float accumulatedG2 = finalColor2.g;
+                float accumulatedB2 = finalColor2.b;
+
+                float accumulatedR3 = finalColor3.r;
+                float accumulatedG3 = finalColor3.g;
+                float accumulatedB3 = finalColor3.b;
+
+                for (auto& light: lights) {
+                    // Intensity Calculation
+                    light.lightDir = light.lightDir.normalize();
+                    float intensity1 = std::clamp(normal1.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
+                    float intensity2 = std::clamp(normal2.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
+                    float intensity3 = std::clamp(normal3.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
+
+                    Color lightContribution1;
+                    lightContribution1.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity1), 0.0f, 255.0f));
+                    lightContribution1.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity1), 0.0f, 255.0f));
+                    lightContribution1.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity1), 0.0f, 255.0f));
+
+                    Color lightContribution2;
+                    lightContribution2.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity2), 0.0f, 255.0f));
+                    lightContribution2.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity2), 0.0f, 255.0f));
+                    lightContribution2.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity2), 0.0f, 255.0f));
+
+                    Color lightContribution3;
+                    lightContribution3.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity3), 0.0f, 255.0f));
+                    lightContribution3.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity3), 0.0f, 255.0f));
+                    lightContribution3.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity3), 0.0f, 255.0f));
+        
+                    // Lighting Models
+                    if (additiveLighting) {
+                        accumulatedR1 = std::clamp(accumulatedR1 + lightContribution1.r, 0.0f, 255.0f);
+                        accumulatedG1 = std::clamp(accumulatedG1 + lightContribution1.g, 0.0f, 255.0f);
+                        accumulatedB1 = std::clamp(accumulatedB1 + lightContribution1.b, 0.0f, 255.0f);
+
+                        accumulatedR2 = std::clamp(accumulatedR2 + lightContribution2.r, 0.0f, 255.0f);
+                        accumulatedG2 = std::clamp(accumulatedG2 + lightContribution2.g, 0.0f, 255.0f);
+                        accumulatedB2 = std::clamp(accumulatedB2 + lightContribution2.b, 0.0f, 255.0f);
+
+                        accumulatedR3 = std::clamp(accumulatedR3 + lightContribution3.r, 0.0f, 255.0f);
+                        accumulatedG3 = std::clamp(accumulatedG3 + lightContribution3.g, 0.0f, 255.0f);
+                        accumulatedB3 = std::clamp(accumulatedB3 + lightContribution3.b, 0.0f, 255.0f);
+
+                    } else {
+                        accumulatedR1 = std::clamp((accumulatedR1 * lightContribution1.r) / 255.0f, 0.0f, 255.0f);
+                        accumulatedG1 = std::clamp((accumulatedG1 * lightContribution1.g) / 255.0f, 0.0f, 255.0f);
+                        accumulatedB1 = std::clamp((accumulatedB1 * lightContribution1.b) / 255.0f, 0.0f, 255.0f);
+
+                        accumulatedR2 = std::clamp((accumulatedR2 * lightContribution2.r) / 255.0f, 0.0f, 255.0f);
+                        accumulatedG2 = std::clamp((accumulatedG2 * lightContribution2.g) / 255.0f, 0.0f, 255.0f);
+                        accumulatedB2 = std::clamp((accumulatedB2 * lightContribution2.b) / 255.0f, 0.0f, 255.0f);
+
+                        accumulatedR3 = std::clamp((accumulatedR3 * lightContribution3.r) / 255.0f, 0.0f, 255.0f);
+                        accumulatedG3 = std::clamp((accumulatedG3 * lightContribution3.g) / 255.0f, 0.0f, 255.0f);
+                        accumulatedB3 = std::clamp((accumulatedB3 * lightContribution3.b) / 255.0f, 0.0f, 255.0f);
+                    }
+                }
+                
+                finalColor1.r = static_cast<unsigned char>(accumulatedR1);
+                finalColor1.g = static_cast<unsigned char>(accumulatedG1);
+                finalColor1.b = static_cast<unsigned char>(accumulatedB1);
+                
+                finalColor2.r = static_cast<unsigned char>(accumulatedR2);
+                finalColor2.g = static_cast<unsigned char>(accumulatedG2);
+                finalColor2.b = static_cast<unsigned char>(accumulatedB2);
+
+                finalColor3.r = static_cast<unsigned char>(accumulatedR3);
+                finalColor3.g = static_cast<unsigned char>(accumulatedG3);
+                finalColor3.b = static_cast<unsigned char>(accumulatedB3);
+
+                //Post Processing
+                finalColor1.postProcess(saturation, exposure, gammaValue);
+                finalColor2.postProcess(saturation, exposure, gammaValue);
+                finalColor3.postProcess(saturation, exposure, gammaValue);
+    
+                // Shading (Gouraud shading)
+                drawTriangleGradientZ(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[0].z, finalColor1,
+                                     triProjected.p[1].x, triProjected.p[1].y, triProjected.p[1].z, finalColor2,
+                                     triProjected.p[2].x, triProjected.p[2].y, triProjected.p[2].z, finalColor3);
+            }
         }   
         
         // Render the framebuffer to the window

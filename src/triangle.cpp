@@ -2,9 +2,9 @@
 #include "vec3d.h"
 #include "renderer.h"
 
-Triangle::Triangle(): p{Vec3d(0.0f, 0.0f, 0.0f), Vec3d(0.0f, 0.0f, 0.0f), Vec3d(0.0f, 0.0f, 0.0f)} {}
-
-Triangle::Triangle(const Vec3d& v1, const Vec3d& v2, const Vec3d& v3): p{v1, v2, v3} {}
+Triangle::Triangle(): p{Vec3d(0.0f, 0.0f, 0.0f), Vec3d(0.0f, 0.0f, 0.0f), Vec3d(0.0f, 0.0f, 0.0f)}, normalGiven(false) {}
+Triangle::Triangle(const Vec3d& v1, const Vec3d& v2, const Vec3d& v3): p{v1, v2, v3}, normalGiven(false) {}
+Triangle::Triangle(const Vec3d& v1, const Vec3d& v2, const Vec3d& v3, const Vec3d& n1, const Vec3d& n2, const Vec3d& n3): p{v1, v2, v3}, n{n1, n2, n3}, normalGiven(true) {}
 
 // Operators
 Triangle Triangle::operator+ (const Triangle& tri) const {
@@ -47,6 +47,12 @@ float Triangle::averageDepth() {
     float z3 = p[2].z;
 
     return (z1 + z2 + z3) / 3.0f;
+}
+
+// Calculate the centroid of Triangle
+Vec3d Triangle::getCentroid() {
+    Vec3d sumOfVertices = p[0] + p[1] + p[2];
+    return sumOfVertices/3.0f;
 }
 
 // Print
