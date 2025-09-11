@@ -17,30 +17,35 @@
 #include "model.h"
 #include "vsh.h"
 
-// Model Render Details 
-   Model modelDetail("scorpion.obj", Color(255, 255, 0), 25.0f);
-// Model modelDetail("sphere.obj", Color(255, 255, 255), 10.0f);
+//======================//
+// Model Render Details //
+//======================//
+
+ Model modelDetail("scorpion.obj", WHITE, 25.0f);
+// Model modelDetail("sphere.obj", WHITE, 10.0f);
 // Model modelDetail;
 // Model modelDetail("Skull.obj", WHITE, 500.0f);
-// Model modelDetail("dragger.obj",WHITE, 1000.0f);
+// Model modelDetail("dragger.obj", WHITE, 1000.0f);
+// Model modelDetail("cylinder.obj", WHITE, 50.0f);
 
-bool renderWireFrame = false;
-bool renderFlatShading = true;
-int renderMode = 0;  // 0: Wireframe, 1: Flat Shading, 2: Gouraud Shading
-
-// Light
+//===============//
+// Light Details //
+//===============//
 Vec3d lightDir(0.0f, 0.5f, 1.0f);
 Color lightColor(255, 255, 0);
 Light light1(lightDir, lightColor, 2.0f);
 
 std::vector<Light> lights= {
-    Light(Vec3d(0.5f, -0.5f, 1.0f), WHITE, 1.0f)
+    Light(Vec3d(0.5f, 0.0f, 0.0f), RED, 1.0f),
+    Light(Vec3d(-0.5f, 0.0f, 0.0f), GREEN, 1.0f)
 };
+
+int renderMode = 0;  // 0: Wireframe, 1: Flat Shading, 2: Gouraud Shading
 
 // Post Processing
 bool additiveLighting = false;
 Color ambientColor(20, 20, 150); // Ambient light color
-float ambientIntensity = 0.5f;   // Ambient light intensity
+float ambientIntensity = 0.05f;   // Ambient light intensity
 float exposure = 4.0f;           // exposure value 
 float saturation = 0.9f;         // saturation value 
 float gammaValue = 1.2f;         // gamma value
@@ -181,7 +186,7 @@ int main() {
     glfwSetCursorPosCallback(window, mouseCallback); // Mouse movement
     glfwSetScrollCallback(window, scrollCallback);   // Mouse scroll
 
-    std::fill(framebuffer.begin(), framebuffer.end(), 0);  // Clear the framebuffer
+    std::fill(framebuffer.begin(), framebuffer.end(), 20);  // Clear the framebuffer
     
     auto lastTime = std::chrono::high_resolution_clock::now();
     int frameCount = 0;
@@ -191,7 +196,7 @@ int main() {
     model.loadFromObj(modelDetail.fileName);
 
     while (!glfwWindowShouldClose(window)) {
-        std::fill(framebuffer.begin(), framebuffer.end(), 0);   // Clear Screen
+        std::fill(framebuffer.begin(), framebuffer.end(), 20);   // Clear Screen
         std::fill(zBuffer.begin(), zBuffer.end(), std::numeric_limits<float>::infinity());
         // FPS Counter
         auto currentTime = std::chrono::high_resolution_clock::now();
@@ -240,41 +245,41 @@ int main() {
                             RED);
             }
             // Flat Shading Rendering
-            if (renderMode == 1){
+            if (renderMode == 1) {
                 // Initialize the Final Color
-                Color finalColor = modelDetail.baseColor;
-                // Ambient Lighting
-                finalColor.ambient(ambientColor, ambientIntensity);
+                Color finalColor;
 
-                float accumulatedR = finalColor.r;
-                float accumulatedG = finalColor.g;
-                float accumulatedB = finalColor.b;
+                float accumulatedR = 0.0;
+                float accumulatedG = 0.0;
+                float accumulatedB = 0.0;
+
+                float baseR = modelDetail.baseColor.r / 255.0f;
+                float baseG = modelDetail.baseColor.g / 255.0f;
+                float baseB = modelDetail.baseColor.b / 255.0f;
 
                 for (auto& light: lights) {
                     // Intensity Calculation
                     light.lightDir = light.lightDir.normalize();
                     float intensity = std::clamp(normal.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
 
-                    Color lightContribution;
-                    lightContribution.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity), 0.0f, 255.0f));
-                    lightContribution.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity), 0.0f, 255.0f));
-                    lightContribution.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity), 0.0f, 255.0f));
-        
-                    // Lighting Models
-                    if (additiveLighting) {
-                        accumulatedR = std::clamp(accumulatedR + lightContribution.r, 0.0f, 255.0f);
-                        accumulatedG = std::clamp(accumulatedG + lightContribution.g, 0.0f, 255.0f);
-                        accumulatedB = std::clamp(accumulatedB + lightContribution.b, 0.0f, 255.0f);
-                    } else {
-                        accumulatedR = std::clamp((accumulatedR * lightContribution.r) / 255.0f, 0.0f, 255.0f);
-                        accumulatedG = std::clamp((accumulatedG * lightContribution.g) / 255.0f, 0.0f, 255.0f);
-                        accumulatedB = std::clamp((accumulatedB * lightContribution.b) / 255.0f, 0.0f, 255.0f);
-                    }
+                    float lightR = light.lightColor.r / 255.0f;
+                    float lightG = light.lightColor.g / 255.0f;
+                    float lightB = light.lightColor.b / 255.0f;
+
+                    accumulatedR += (baseR * lightR * intensity) * 255.0f;
+                    accumulatedG += (baseG * lightG * intensity) * 255.0f;
+                    accumulatedB += (baseB * lightB * intensity) * 255.0f;
                 }
+
+                float ambR = (ambientColor.r / 255.0f) * ambientIntensity * 255.0f;
+                float ambG = (ambientColor.g / 255.0f) * ambientIntensity * 255.0f;
+                float ambB = (ambientColor.b / 255.0f) * ambientIntensity * 255.0f;
+
+                accumulatedR += ambR; accumulatedG += ambG; accumulatedB += ambB;
                 
-                finalColor.r = static_cast<unsigned char>(accumulatedR);
-                finalColor.g = static_cast<unsigned char>(accumulatedG);
-                finalColor.b = static_cast<unsigned char>(accumulatedB);
+                finalColor.r = static_cast<unsigned char>(std::clamp(accumulatedR, 0.0f, 255.0f));
+                finalColor.g = static_cast<unsigned char>(std::clamp(accumulatedG, 0.0f, 255.0f));
+                finalColor.b = static_cast<unsigned char>(std::clamp(accumulatedB, 0.0f, 255.0f));
 
                 // Post Processing
                 finalColor.postProcess(saturation, exposure, gammaValue);
@@ -298,89 +303,65 @@ int main() {
                     normal2 = normal;
                     normal3 = normal;
                 }
+                
                 // Initialize the Final Color
-                Color finalColor1 = modelDetail.baseColor;
-                Color finalColor2 = modelDetail.baseColor;
-                Color finalColor3 = modelDetail.baseColor;
-                // Ambient Lighting
-                finalColor1.ambient(ambientColor, ambientIntensity);
-                finalColor2.ambient(ambientColor, ambientIntensity);
-                finalColor3.ambient(ambientColor, ambientIntensity);
+                Color finalColor1, finalColor2, finalColor3;
 
-                float accumulatedR1 = finalColor1.r;
-                float accumulatedG1 = finalColor1.g;
-                float accumulatedB1 = finalColor1.b;
-
-                float accumulatedR2 = finalColor2.r;
-                float accumulatedG2 = finalColor2.g;
-                float accumulatedB2 = finalColor2.b;
-
-                float accumulatedR3 = finalColor3.r;
-                float accumulatedG3 = finalColor3.g;
-                float accumulatedB3 = finalColor3.b;
+                float accumulatedR1 = 0.0f, accumulatedG1 = 0.0f, accumulatedB1 = 0.0f;
+                float accumulatedR2 = 0.0f, accumulatedG2 = 0.0f, accumulatedB2 = 0.0f;
+                float accumulatedR3 = 0.0f, accumulatedG3 = 0.0f, accumulatedB3 = 0.0f;
 
                 for (auto& light: lights) {
-                    // Intensity Calculation
                     light.lightDir = light.lightDir.normalize();
                     float intensity1 = std::clamp(normal1.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
                     float intensity2 = std::clamp(normal2.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
                     float intensity3 = std::clamp(normal3.dot(light.lightDir) * light.lightIntensity, 0.0f, 1.0f);
 
-                    Color lightContribution1;
-                    lightContribution1.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity1), 0.0f, 255.0f));
-                    lightContribution1.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity1), 0.0f, 255.0f));
-                    lightContribution1.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity1), 0.0f, 255.0f));
+                    // Each light contributes: baseColor * lightColor * intensity
+                    // Convert to 0-1 range for calculation
+                    float baseR = modelDetail.baseColor.r / 255.0f;
+                    float baseG = modelDetail.baseColor.g / 255.0f;
+                    float baseB = modelDetail.baseColor.b / 255.0f;
+                    
+                    float lightR = light.lightColor.r / 255.0f;
+                    float lightG = light.lightColor.g / 255.0f;
+                    float lightB = light.lightColor.b / 255.0f;
 
-                    Color lightContribution2;
-                    lightContribution2.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity2), 0.0f, 255.0f));
-                    lightContribution2.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity2), 0.0f, 255.0f));
-                    lightContribution2.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity2), 0.0f, 255.0f));
+                    // Calculate each light's contribution to each vertex
+                    accumulatedR1 += (baseR * lightR * intensity1) * 255.0f;
+                    accumulatedG1 += (baseG * lightG * intensity1) * 255.0f;
+                    accumulatedB1 += (baseB * lightB * intensity1) * 255.0f;
 
-                    Color lightContribution3;
-                    lightContribution3.r = static_cast<unsigned char>(std::clamp((light.lightColor.r * intensity3), 0.0f, 255.0f));
-                    lightContribution3.g = static_cast<unsigned char>(std::clamp((light.lightColor.g * intensity3), 0.0f, 255.0f));
-                    lightContribution3.b = static_cast<unsigned char>(std::clamp((light.lightColor.b * intensity3), 0.0f, 255.0f));
-        
-                    // Lighting Models
-                    if (additiveLighting) {
-                        accumulatedR1 = std::clamp(accumulatedR1 + lightContribution1.r, 0.0f, 255.0f);
-                        accumulatedG1 = std::clamp(accumulatedG1 + lightContribution1.g, 0.0f, 255.0f);
-                        accumulatedB1 = std::clamp(accumulatedB1 + lightContribution1.b, 0.0f, 255.0f);
+                    accumulatedR2 += (baseR * lightR * intensity2) * 255.0f;
+                    accumulatedG2 += (baseG * lightG * intensity2) * 255.0f;
+                    accumulatedB2 += (baseB * lightB * intensity2) * 255.0f;
 
-                        accumulatedR2 = std::clamp(accumulatedR2 + lightContribution2.r, 0.0f, 255.0f);
-                        accumulatedG2 = std::clamp(accumulatedG2 + lightContribution2.g, 0.0f, 255.0f);
-                        accumulatedB2 = std::clamp(accumulatedB2 + lightContribution2.b, 0.0f, 255.0f);
-
-                        accumulatedR3 = std::clamp(accumulatedR3 + lightContribution3.r, 0.0f, 255.0f);
-                        accumulatedG3 = std::clamp(accumulatedG3 + lightContribution3.g, 0.0f, 255.0f);
-                        accumulatedB3 = std::clamp(accumulatedB3 + lightContribution3.b, 0.0f, 255.0f);
-
-                    } else {
-                        accumulatedR1 = std::clamp((accumulatedR1 * lightContribution1.r) / 255.0f, 0.0f, 255.0f);
-                        accumulatedG1 = std::clamp((accumulatedG1 * lightContribution1.g) / 255.0f, 0.0f, 255.0f);
-                        accumulatedB1 = std::clamp((accumulatedB1 * lightContribution1.b) / 255.0f, 0.0f, 255.0f);
-
-                        accumulatedR2 = std::clamp((accumulatedR2 * lightContribution2.r) / 255.0f, 0.0f, 255.0f);
-                        accumulatedG2 = std::clamp((accumulatedG2 * lightContribution2.g) / 255.0f, 0.0f, 255.0f);
-                        accumulatedB2 = std::clamp((accumulatedB2 * lightContribution2.b) / 255.0f, 0.0f, 255.0f);
-
-                        accumulatedR3 = std::clamp((accumulatedR3 * lightContribution3.r) / 255.0f, 0.0f, 255.0f);
-                        accumulatedG3 = std::clamp((accumulatedG3 * lightContribution3.g) / 255.0f, 0.0f, 255.0f);
-                        accumulatedB3 = std::clamp((accumulatedB3 * lightContribution3.b) / 255.0f, 0.0f, 255.0f);
-                    }
+                    accumulatedR3 += (baseR * lightR * intensity3) * 255.0f;
+                    accumulatedG3 += (baseG * lightG * intensity3) * 255.0f;
+                    accumulatedB3 += (baseB * lightB * intensity3) * 255.0f;
                 }
-                
-                finalColor1.r = static_cast<unsigned char>(accumulatedR1);
-                finalColor1.g = static_cast<unsigned char>(accumulatedG1);
-                finalColor1.b = static_cast<unsigned char>(accumulatedB1);
-                
-                finalColor2.r = static_cast<unsigned char>(accumulatedR2);
-                finalColor2.g = static_cast<unsigned char>(accumulatedG2);
-                finalColor2.b = static_cast<unsigned char>(accumulatedB2);
 
-                finalColor3.r = static_cast<unsigned char>(accumulatedR3);
-                finalColor3.g = static_cast<unsigned char>(accumulatedG3);
-                finalColor3.b = static_cast<unsigned char>(accumulatedB3);
+                // Add ambient lighting after all directional lights
+                float ambR = (ambientColor.r / 255.0f) * ambientIntensity * 255.0f;
+                float ambG = (ambientColor.g / 255.0f) * ambientIntensity * 255.0f;
+                float ambB = (ambientColor.b / 255.0f) * ambientIntensity * 255.0f;
+
+                accumulatedR1 += ambR; accumulatedG1 += ambG; accumulatedB1 += ambB;
+                accumulatedR2 += ambR; accumulatedG2 += ambG; accumulatedB2 += ambB;
+                accumulatedR3 += ambR; accumulatedG3 += ambG; accumulatedB3 += ambB;
+
+                // Clamp final values
+                finalColor1.r = static_cast<unsigned char>(std::clamp(accumulatedR1, 0.0f, 255.0f));
+                finalColor1.g = static_cast<unsigned char>(std::clamp(accumulatedG1, 0.0f, 255.0f));
+                finalColor1.b = static_cast<unsigned char>(std::clamp(accumulatedB1, 0.0f, 255.0f));
+
+                finalColor2.r = static_cast<unsigned char>(std::clamp(accumulatedR2, 0.0f, 255.0f));
+                finalColor2.g = static_cast<unsigned char>(std::clamp(accumulatedG2, 0.0f, 255.0f));
+                finalColor2.b = static_cast<unsigned char>(std::clamp(accumulatedB2, 0.0f, 255.0f));
+
+                finalColor3.r = static_cast<unsigned char>(std::clamp(accumulatedR3, 0.0f, 255.0f));
+                finalColor3.g = static_cast<unsigned char>(std::clamp(accumulatedG3, 0.0f, 255.0f));
+                finalColor3.b = static_cast<unsigned char>(std::clamp(accumulatedB3, 0.0f, 255.0f));
 
                 //Post Processing
                 finalColor1.postProcess(saturation, exposure, gammaValue);

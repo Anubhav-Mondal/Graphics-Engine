@@ -17,7 +17,7 @@ void setPixel (int x, int y, Color color) {
         framebuffer[index] = color.r;       // Red
         framebuffer[index + 1] = color.g;   // Green
         framebuffer[index + 2] = color.b;   // Blue
-        framebuffer[index + 3] = 255; // Alpha
+        framebuffer[index + 3] = 255;       // Alpha
     }
 }
 
